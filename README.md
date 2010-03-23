@@ -1,7 +1,7 @@
 PHP TFTP server
 ---------------
 
-A TFTP server class written in PHP with examples how to implement a filesystem
-and MySQL based server. The MySQL example also shows to create a deamon.
-
-Type <code>php unittest.php</code> to run unit tests
+A TFTP server class written in PHP, some example server implementations are also included.
+<code>fileserver.php</code>Serves files from the file system, read and write support.
+<code>mysqlserver.php</code>Example server how to query a MySQL databas on read requests.
+<code>unittest.php</code>Unit tests for <code>tftpserver.php</code>, run <code>php unittest.php</code> to verify them.
