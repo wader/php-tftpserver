@@ -261,6 +261,13 @@ if($pid == 0) {
 	  array(pack("nn", TFTPOpcode::DATA, 2) . "aaaaaaaaaaa",
 		pack("nn", TFTPOpcode::ACK, 2))
 	  ),
+    "Read file 511 bytes, after write with 500 byte block",
+    array(
+	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0",
+		pack("nn", TFTPOpcode::DATA, 1) . $s511),
+	  array(pack("nn", TFTPOpcode::ACK, 1),
+		null)
+	  ),
     "Write file with extensions then dont accept them",
     array(
 	  array(pack("n", TFTPOpcode::WRQ) . "test\0octet\0timeout\0005\0",
