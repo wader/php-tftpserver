@@ -63,7 +63,8 @@ class TFTPOpcode
 			  TFTPOpcode::WRQ => "WRQ",
 			  TFTPOpcode::DATA => "DATA",
 			  TFTPOpcode::ACK => "ACK",
-			  TFTPOpcode::ERROR => "ERROR");
+			  TFTPOpcode::ERROR => "ERROR",
+			  TFTPOpcode::OACK => "OACK");
     if(isset($names[$v]))
       return $names[$v];
     else
@@ -75,6 +76,7 @@ class TFTPOpcode
   const DATA = 3; // send data
   const ACK = 4; // ack data
   const ERROR = 5;
+  const OACK = 6; // option ack, instead of first ACK/DATA
 }
 
 class TFTPError
@@ -87,26 +89,48 @@ class TFTPError
   const UNKNOWN_TID = 5; // unknown transfer (id is ip:port pair)
   const FILE_ALREADY_EXISTS = 6;
   const NO_SUCH_USER = 7;
+  const OACK_FAILURE = 8;
 }
 
 class TFTPTransferState
 {
   const READY = 1;
-  const SENDING = 2;
-  const RECEIVING = 3;
-  const TERMINATING = 4;
+  const SENDING_WAIT_OACK = 2;
+  const SENDING = 3;
+  const RECEIVING = 4;
+  const TERMINATING = 5;
 }
 
 abstract class TFTPTransfer {
   public $state;
   public $peer;
+  public $retransmit_timeout;
+  public $block_size;
+  public $tsize;
   protected $_server; // TFTPServer reference
 
-  function __construct($server, $peer)
+  function __construct($server, $peer, $extensions)
   {
     $this->state = TFTPTransferState::READY;
     $this->peer = $peer;
+    $this->retransmit_timeout = $server->retransmit_timeout;
+    $this->block_size = $server->block_size;
+    $this->tsize = 0;
     $this->_server = $server;
+
+    if(isset($extensions["timeout"])) {
+      $timeout = (int)$extensions["timeout"];
+      if($timeout > 0 && $timeout < 256)
+	$this->retransmit_timeout = $timeout;
+    }
+
+    if(isset($extensions["blksize"])) {
+      $blksize = (int)$extensions["blksize"];
+      if($blksize > 0 && $blksize <= $server->max_block_size)
+	$this->block_size = $blksize;
+    }
+
+    // tsize is only checked for in write transfers
   }
 
   protected function log_debug($message)
@@ -173,6 +197,28 @@ abstract class TFTPTransfer {
     $this->log_debug("ERROR: $error: $message");
     $this->state = TFTPTransferState::TERMINATING;
   }
+
+  protected function use_extensions() {
+    return
+      $this->retransmit_timeout != $this->_server->retransmit_timeout ||
+      $this->block_size != $this->_server->block_size ||
+      $this->tsize != 0;
+  }
+
+  protected function packet_oack() {
+    $options = array();
+
+    if($this->retransmit_timeout != $this->_server->retransmit_timeout)
+      $options["timeout"] = (string)$this->retransmit_timeout;
+
+    if($this->block_size != $this->_server->block_size)
+      $options["blksize"] = (string)$this->block_size;
+
+    if($this->tsize != 0)
+      $options["tsize"] = (string)$this->tsize;
+
+    return TFTPServer::packet_oack($options);
+  }
 }
 
 class TFTPReadTransfer extends TFTPTransfer {
@@ -182,9 +228,9 @@ class TFTPReadTransfer extends TFTPTransfer {
   private $_block;
   private $_last_block;
 
-  function __construct($server, $peer)
+  function __construct($server, $peer, $extensions)
   {
-    parent::__construct($server, $peer);
+    parent::__construct($server, $peer, $extensions);
     $this->_last_recv_ack = time();
     $this->_last_sent_data = $this->_last_recv_ack;
     $this->_buffer = false;
@@ -197,14 +243,18 @@ class TFTPReadTransfer extends TFTPTransfer {
   private function current_block()
   {
     return substr($this->_buffer,
-		  ($this->_block - 1) * $this->_server->block_size,
-		  $this->_server->block_size);
+		  ($this->_block - 1) * $this->block_size,
+		  $this->block_size);
   }
 
   private function packet_data_current()
   {
     $this->_last_sent_data = time();
-    return TFTPServer::packet_data($this->_block, $this->current_block());
+
+    if($this->state == TFTPTransferState::SENDING_WAIT_OACK)
+      return $this->packet_oack();
+    else
+      return TFTPServer::packet_data($this->_block, $this->current_block());
   }
 
   public function rrq($filename, $mode)
@@ -212,7 +262,7 @@ class TFTPReadTransfer extends TFTPTransfer {
     $this->log_debug("RRQ: filename $filename in $mode mode");
 
     if($this->state != TFTPTransferState::READY)
-      return $this->illegal_operation("RRQ", "Not in ready state"); 
+      return $this->illegal_operation("RRQ", "Not in ready state");
 
     if(!$this->_server->exists($this->peer, $filename))
       return $this->terminal_info(TFTPError::FILE_NOT_FOUND,
@@ -230,16 +280,30 @@ class TFTPReadTransfer extends TFTPTransfer {
     $this->log_info("Reading $filename (" .
 		    strlen($this->_buffer) . " bytes)");
 
-    $this->state = TFTPTransferState::SENDING;
+    if($this->use_extensions())
+      $this->state = TFTPTransferState::SENDING_WAIT_OACK;
+    else
+      $this->state = TFTPTransferState::SENDING;
     $this->_last_block = floor(strlen($this->_buffer) /
-			       $this->_server->block_size) + 1;
+			       $this->block_size) + 1;
 
-    $this->log_debug("RRQ: send first block");
+    $this->log_debug("RRQ: send first block or OACK");
     return $this->packet_data_current();
   }
 
   public function ack($block)
   {
+    if($this->state == TFTPTransferState::SENDING_WAIT_OACK) {
+      if($block != 0) {
+	$this->log_debug("ACK: waiting OACK ACK got block $block");
+	return false;
+      }
+
+      $this->state = TFTPTransferState::SENDING;
+      $this->log_debug("ACK: got OACK ACK, send first block");
+      return $this->packet_data_current();
+    }
+
     if($this->state != TFTPTransferState::SENDING)
       return $this->illegal_operation("ACK", "Not in sending state");
 
@@ -278,8 +342,8 @@ class TFTPReadTransfer extends TFTPTransfer {
       return false;
     }
 
-    if($now - $this->_last_sent_data > $this->_server->retransmit_timeout) {
-      $this->log_debug("retransmit: resending block {$this->_block}");
+    if($now - $this->_last_sent_data > $this->retransmit_timeout) {
+      $this->log_debug("retransmit: resending block {$this->_block} or OACK");
       return $this->packet_data_current();
     }
 
@@ -296,9 +360,9 @@ class TFTPWriteTransfer extends TFTPTransfer {
   private $_filename;
   private $_mode;
 
-  function __construct($server, $peer)
+  function __construct($server, $peer, $extensions)
   {
-    parent::__construct($server, $peer);
+    parent::__construct($server, $peer, $extensions);
     $this->_last_sent_ack = time();
     $this->_last_recv_data = $this->_last_sent_ack;
     $this->_buffer = array();
@@ -307,13 +371,20 @@ class TFTPWriteTransfer extends TFTPTransfer {
     $this->_filename = false;
     $this->_mode = false;
 
+    if(isset($extensions["tsize"]))
+      $this->tsize = (int)$extensions["tsize"];
+
     $this->log_debug("new write transfer");
   }
 
   private function packet_ack_current()
   {
     $this->_last_sent_ack = time();
-    return TFTPServer::packet_ack($this->_last_recv_block);
+
+    if($this->_last_recv_block == 0 && $this->use_extensions())
+      return $this->packet_oack();
+    else
+      return TFTPServer::packet_ack($this->_last_recv_block);
   }
 
   public function wrq($filename, $mode)
@@ -327,13 +398,22 @@ class TFTPWriteTransfer extends TFTPTransfer {
       return $this->terminal_info(TFTPError::ACCESS_VIOLATION,
 				  "File $filename is not writable");
 
+    if($this->tsize != 0 && $this->tsize > $this->_server->max_put_size)
+      return $this->terminal_info(TFTPError::DISK_FULL,
+				  "File too big, " .
+				  $this->tsize . "(tsize) > " .
+				  $this->_server->max_put_size);
+
     $this->state = TFTPTransferState::RECEIVING;
     $this->_filename = $filename;
     $this->_mode = $mode;
     $this->_last_sent_ack = time();
 
     $this->log_debug("WRQ: ack request");
-    return TFTPServer::packet_ack(0);
+    if($this->use_extensions())
+      return $this->packet_oack();
+    else
+      return TFTPServer::packet_ack(0);
   }
 
   public function data($block, $data)
@@ -362,12 +442,12 @@ class TFTPWriteTransfer extends TFTPTransfer {
     $this->_buffer_size += strlen($data);
 
     if($this->_buffer_size > $this->_server->max_put_size)
-      return $this->terminal_info("DATA", TFTPError::DISK_FULL,
+      return $this->terminal_info(TFTPError::DISK_FULL,
 				  "File too big, " .
 				  $this->_buffer_size . " > " .
 				  $this->_server->max_put_size);
 
-    if(strlen($data) < $this->_server->block_size) {
+    if(strlen($data) < $this->block_size) {
       $this->log_debug("DATA: last, done");
       $this->state = TFTPTransferState::TERMINATING;
       $this->log_info("Writing {$this->_filename} " .
@@ -389,7 +469,7 @@ class TFTPWriteTransfer extends TFTPTransfer {
       return false;
     }
 
-    if($now - $this->_last_sent_ack > $this->_server->retransmit_timeout) {
+    if($now - $this->_last_sent_ack > $this->retransmit_timeout) {
       $this->log_debug("retransmit: reack block {$this->_last_recv_block}");
       return $this->packet_ack_current();
     }
@@ -400,6 +480,7 @@ class TFTPWriteTransfer extends TFTPTransfer {
 
 class TFTPServer {
   public $block_size = 512;
+  public $max_block_size = 1432;
   public $timeout = 10;
   public $retransmit_timeout = 1;
   public $max_put_size = 10485760; // 10 Mibi
@@ -466,6 +547,14 @@ class TFTPServer {
   public static function packet_error($code, $message = "")
   {
     return pack("nn", TFTPOpcode::ERROR, $code) . $message . "\0";
+  }
+
+  public static function packet_oack($options)
+  {
+    $data = "";
+    foreach($options as $key => $value)
+      $data .= "$key\0$value\0";
+    return pack("n", TFTPOpcode::OACK) . $data;
   }
 
   public static function escape_string($str)
@@ -576,17 +665,28 @@ class TFTPServer {
       case TFTPOpcode::WRQ:
       case TFTPOpcode::RRQ:
 	$a = explode("\0", substr($packet, 2));
-	if(count($a) != 3 && $a[2] != "") {
+	if(count($a) < 3 || $a[count($a) - 1] != "") {
 	  $this->log_warning($peer, "request: malformed " .
-			     TFTPOpcode::name($op));
+			     tftpopcode::name($op));
 	  return false;
 	}
 
+	$rawexts = array_slice($a, 2, -1);
+	if(count($rawexts) % 2 != 0) {
+	  $this->log_warning($peer, "request: malformed extension " .
+			     "key/value pairs " . tftpopcode::name($op));
+	  return false;
+	}
+
+	$extensions = array();
+	foreach(array_chunk($rawexts, 2) as $pair)
+	  $extensions[strtolower($pair[0])] = $pair[1];
+
 	if($transfer === false) {
 	  if($op == TFTPOpcode::RRQ)
-	    $transfer = new TFTPReadTransfer($this, $peer);
+	    $transfer = new TFTPReadTransfer($this, $peer, $extensions);
 	  else
-	    $transfer = new TFTPWriteTransfer($this, $peer);
+	    $transfer = new TFTPWriteTransfer($this, $peer, $extensions);
 
 	  $this->_transfers[$peer] = $transfer;
 	}

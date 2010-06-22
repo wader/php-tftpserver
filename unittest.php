@@ -166,8 +166,9 @@ if($pid == 0) {
   if(!$server->loop(&$error))
     die("$error\n");
 } else {
-  usleep(100);
+  usleep(100000);
 
+  $s500 = str_pad("", 500, "a");
   $s511 = str_pad("", 511, "a");
 
   $tests = array(
@@ -213,31 +214,83 @@ if($pid == 0) {
 		pack("nn", TFTPOpcode::ACK, 0)),
 	  array(pack("nn", TFTPOpcode::DATA, 1) . $s511,
 		pack("nn", TFTPOpcode::ACK, 1))
-	 ),
+	  ),
     "Read file 511 bytes",
     array(
 	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0",
 		pack("nn", TFTPOpcode::DATA, 1) . $s511),
 	  array(pack("nn", TFTPOpcode::ACK, 1),
 		null)
-	 ),
+	  ),
+    "Read file with malformed extensions",
+    array(
+	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0bla",
+		null)
+	  ),
+    "Read file with unknown extensions",
+    array(
+	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0bla\0bla\0",
+		pack("nn", TFTPOpcode::DATA, 1) . $s511),
+	  array(pack("nn", TFTPOpcode::ACK, 1),
+		null)
+	  ),
+    "Read file with extensions, 500 byte block, 5 sec timeout",
+    array(
+	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0timeout\0005\0blksize\000500\0",
+		pack("n", TFTPOpcode::OACK) . "timeout\0005\0blksize\000500\0"),
+	  array(pack("nn", TFTPOpcode::ACK, 0),
+		pack("nn", TFTPOpcode::DATA, 1) . $s500),
+	  array(pack("nn", TFTPOpcode::ACK, 1),
+		pack("nn", TFTPOpcode::DATA, 2) . "aaaaaaaaaaa"),
+	  array(pack("nn", TFTPOpcode::ACK, 2),
+		null)
+	  ),
+    "Read file with extensions then dont accept them",
+    array(
+	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0timeout\0005\0",
+		pack("n", TFTPOpcode::OACK) . "timeout\0005\0"),
+	  array(pack("nn", TFTPOpcode::ERROR, 8),
+		null)
+	  ),
+    "Write file 511 bytes with extensions, 500 byte block, 5 sec timeout",
+    array(
+	  array(pack("n", TFTPOpcode::WRQ) . "test\0octet\0timeout\0005\0blksize\000500\0",
+		pack("n", TFTPOpcode::OACK) . "timeout\0005\0blksize\000500\0"),
+	  array(pack("nn", TFTPOpcode::DATA, 1) . $s500,
+		pack("nn", TFTPOpcode::ACK, 1)),
+	  array(pack("nn", TFTPOpcode::DATA, 2) . "aaaaaaaaaaa",
+		pack("nn", TFTPOpcode::ACK, 2))
+	  ),
+    "Write file with extensions then dont accept them",
+    array(
+	  array(pack("n", TFTPOpcode::WRQ) . "test\0octet\0timeout\0005\0",
+		pack("n", TFTPOpcode::OACK) . "timeout\0005\0"),
+	  array(pack("nn", TFTPOpcode::ERROR, 8),
+		null)
+	  ),
+    "Write too big file with tsize extension",
+    array(
+	  array(pack("n", TFTPOpcode::WRQ) . "test\0octet\0tsize\00099999999\0",
+		pack("nn", TFTPOpcode::ERROR,
+		     TFTPError::DISK_FULL) . "File too big, 99999999(tsize) > 10485760\0")
+	  ),
     "Read non-existing file",
     array(
 	  array(pack("n", TFTPOpcode::RRQ) . "non_existing\0octet\0",
 		pack("nn", TFTPOpcode::ERROR, TFTPError::FILE_NOT_FOUND) .
-		"File non_existing does not exist\0")
-	 ),
+		     "File non_existing does not exist\0")
+	  ),
     "Read non-readable file",
     array(
 	  array(pack("n", TFTPOpcode::RRQ) . "not_readable\0octet\0",
 		pack("nn", TFTPOpcode::ERROR, TFTPError::ACCESS_VIOLATION) .
-		"File not_readable is not readable\0")
-	 ),
+		     "File not_readable is not readable\0")
+	  ),
     "Write not-writable file",
     array(
 	  array(pack("n", TFTPOpcode::WRQ) . "not_writable\0octet\0",
 		pack("nn", TFTPOpcode::ERROR, TFTPError::ACCESS_VIOLATION) .
-		"File not_writable is not writable\0")
+		     "File not_writable is not writable\0")
 	 ),
     "Send read in write transfer",
     array(
