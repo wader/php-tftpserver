@@ -308,7 +308,7 @@ class TFTPReadTransfer extends TFTPTransfer {
       return $this->illegal_operation("ACK", "Not in sending state");
 
     $this->log_debug("ACK: block $block");
-    $this->last_recv_ack = time();
+    $this->_last_recv_ack = time();
 
     if($block < $this->_block) {
       $this->log_debug("ACK: duplicate block $block");
