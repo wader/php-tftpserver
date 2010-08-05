@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Unit tests for TFTPServer
+ * Functional test for TFTPServer
  *
  * Copyright (c) 2010 <mattias.wadman@gmail.com>
  *
@@ -28,7 +28,7 @@
 
 require_once("tftpserver.php");
 
-class UnitTestTFTPServer extends TFTPServer
+class TestTFTPServer extends TFTPServer
 {
   private $_files = array();
 
@@ -162,7 +162,7 @@ $url = "udp://$host:$port";
 $pid = pcntl_fork();
 
 if($pid == 0) {
-  $server = new UnitTestTFTPServer($url);
+  $server = new TestTFTPServer($url);
   if(!$server->loop(&$error))
     die("$error\n");
 } else {
