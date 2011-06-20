@@ -222,9 +222,14 @@ if($pid == 0) {
 	  array(pack("nn", TFTPOpcode::ACK, 1),
 		null)
 	  ),
-    "Read file with malformed extensions",
+    "Read file with malformed extensions (not terminated)",
     array(
 	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0bla",
+		null)
+	  ),
+    "Read file with malformed extensions (odd count)",
+    array(
+	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0bla\0",
 		null)
 	  ),
     "Read file with unknown extensions",
