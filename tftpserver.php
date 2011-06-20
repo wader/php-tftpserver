@@ -667,14 +667,14 @@ class TFTPServer {
 	$a = explode("\0", substr($packet, 2));
 	if(count($a) < 3 || $a[count($a) - 1] != "") {
 	  $this->log_warning($peer, "request: malformed " .
-			     tftpopcode::name($op));
+			     TFTPOpcode::name($op));
 	  return false;
 	}
 
 	$rawexts = array_slice($a, 2, -1);
 	if(count($rawexts) % 2 != 0) {
 	  $this->log_warning($peer, "request: malformed extension " .
-			     "key/value pairs " . tftpopcode::name($op));
+			     "key/value pairs " . TFTPOpcode::name($op));
 	  return false;
 	}
 
