@@ -356,6 +356,9 @@ if($pid == 0) {
 
   echo (count($tests) / 2) . " total, $failed failed\n";
 
+  echo "Testing some standard clients\n";
+  system("sh test_clients.sh localhost 1234");
+
   // kill server
   posix_kill($pid, SIGINT);
 }
