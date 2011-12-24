@@ -1,7 +1,10 @@
+#!/usr/bin/php
 <?php
+//this doesnt matter
+date_default_timezone_set('America/Los_Angeles');
 
 /*
- * Filesystem TFTPServer example
+ * HTTPproxy TFTPServer example
  *
  * Copyright (c) 2010 <mattias.wadman@gmail.com>
  *
@@ -24,20 +27,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * Usage:
- * php fileserver.php udp://127.0.0.1:1234 /some/root/path
- *
- * Or more complex, listen on port 69, change to nobody, read-write and debug:
- * sudo php fileserver.php udp://127.0.0.1:69 /tmp nobody 1 1
  *
  */
 
 require_once("tftpserver.php");
+require_once("daemon.php");
 
 class FileTFTPServer extends TFTPServer
 {
   private $_root;
   private $_debug;
+  private $contents;
 
   function __construct($server_url,
 		       $root = null, $rw = false, $debug = false)
@@ -92,34 +92,37 @@ class FileTFTPServer extends TFTPServer
 
     return $abs;
   }
-  private function valid_filename($filename) 
-  {
-	if (preg_match('/\.\./',$filename)==1) {
-		return;
-	}
-	return preg_match('/^[a-zA-Z0-9\-\/\.]+$/',$filename)==1;
-  }
 
   public function exists($peer, $filename)
   {
-    return ($this->valid_filename($filename));
+    $this->log_warning($peer, 'Checking if file exists');
+      
+    $path = $this->resolv_path($filename);
+    if($path === false)
+      return false;
+    
+    $content = @file_get_contents($path);
+    if($content === false) {
+      $this->log_warning($peer, 'function file_get_contents returned false');
+      return false;
+    }
+    
+    $this->log_warning($peer, 'HTTP Server Replied With: '.$http_response_header[0]);
+    if($http_response_header[0] != 'HTTP/1.1 200 OK')
+        return false;    
+    
+    $this->content = $content;
+        return true;
   }
 
   public function readable($peer, $filename)
   {
-    return ($this->valid_filename($filename));
+    return true;
   }
 
   public function get($peer, $filename, $mode)
   {
-    $path = $this->resolv_path($filename);
-    if($path === false)
-      return false;
-    $content = @file_get_contents($path);
-    if($content === false)
-      return false;
-
-    return $content;
+    return $this->content;
   }
 
   public function writable($peer, $filename)
@@ -134,22 +137,35 @@ class FileTFTPServer extends TFTPServer
 }
 
 if(count($_SERVER["argv"]) < 3)
-  die("Usage: {$_SERVER["argv"][0]} tftp_url web_url [user] [rw] [debug]\n");
+  die("Usage: {$_SERVER["argv"][0]} bind_ip web_url(http://<serverip>/bluebox/index.php/endpointmanager/config) [user] [rw] [debug]\n");
+
+  
+$debug = false;
+if(isset($_SERVER["argv"][5]))
+  $debug = (bool)$_SERVER["argv"][5];
+  
+if((!$debug) AND (function_exists('posix_setsid'))) {
+  $pid = daemonize("tftpserver.pid", "/");
+if($pid === false)
+  die("Failed to daemonize\n");
+if($pid != 0)
+  exit(0);
+} elseif(!function_exists('posix_setsid')) {
+    print "POSIX Functions don't exist. So we can't run this in the background.\n".
+        "You Might want to think about running 'yum install php-process' or something equivalent\n".
+        "For now we will just run in the foreground\n";
+}
 
 $user = null;
-if(isset($_SERVER["argv"][3]))
+if(isset($_SERVER["argv"][3]) AND function_exists('posix_setsid'))
   $user = posix_getpwnam($_SERVER["argv"][3]);
 $rw = false;
 if(isset($_SERVER["argv"][4]))
   $rw = (bool)$_SERVER["argv"][4];
-$debug = false;
-if(isset($_SERVER["argv"][5]))
-  $debug = (bool)$_SERVER["argv"][5];
 
-$server = new FileTFTPServer($_SERVER["argv"][1],
+
+$server = new FileTFTPServer('udp://'.$_SERVER["argv"][1].':69',
 			     $_SERVER["argv"][2],
 			     $rw, $debug);
 if(!$server->loop(&$error, $user))
   die("$error\n");
-
-?>
