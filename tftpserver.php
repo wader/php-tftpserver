@@ -480,7 +480,7 @@ class TFTPWriteTransfer extends TFTPTransfer {
 
 class TFTPServer {
   public $block_size = 512;
-  public $max_block_size = 1432;
+  public $max_block_size = 65464; // max block size from rfc2348
   public $timeout = 10;
   public $retransmit_timeout = 1;
   public $max_put_size = 10485760; // 10 Mibi
