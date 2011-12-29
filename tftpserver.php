@@ -484,7 +484,6 @@ class TFTPServer {
   public $timeout = 10;
   public $retransmit_timeout = 1;
   public $max_put_size = 10485760; // 10 Mibi
-  public $mtu = 1500;
   private $_socket_url;
   private $_socket;
   private $_transfers = array();
@@ -608,7 +607,9 @@ class TFTPServer {
 
       if(count($read) > 0) {
 	$packet = stream_socket_recvfrom($this->_socket,
-					 $this->mtu, 0, $peer);
+					 65536, // max udp packet size
+					 0, // no flags
+					 $peer);
 	$this->log_debug($peer, "request: " . strlen($packet). " bytes");
 	$this->log_debug($peer, "request: " . 
 			 TFTPServer::escape_string($packet));
