@@ -610,6 +610,13 @@ class TFTPServer {
 					 65535, // max udp packet size
 					 0, // no flags
 					 $peer);
+	// ipv6 hack, convert to [host]:port format
+	if(strpos($peer, ".") === false) {
+	  $portpos = strrpos($peer, ":");
+	  $host = substr($peer, 0, $portpos);
+	  $port = substr($peer, $portpos + 1);
+	  $peer = "[$host]:$port";
+	}
 	$this->log_debug($peer, "request: " . strlen($packet). " bytes");
 	$this->log_debug($peer, "request: " . 
 			 TFTPServer::escape_string($packet));
