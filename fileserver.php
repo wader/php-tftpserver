@@ -30,6 +30,9 @@
  * Or more complex, listen on port 69, change to nobody, read-write and debug:
  * sudo php fileserver.php udp://127.0.0.1:69 /tmp nobody 1 1
  *
+ * any: php fileserver.php udp://0:1234 /some/root/path
+ * ipv6: php fileserver.php udp://[::1]:1234 /some/root/path
+ *
  */
 
 require_once("tftpserver.php");
