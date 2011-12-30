@@ -3,7 +3,7 @@
 /*
  * Functional test for TFTPServer
  *
- * Copyright (c) 2010 <mattias.wadman@gmail.com>
+ * Copyright (c) 2011 <mattias.wadman@gmail.com>
  *
  * MIT License:
  * Permission is hereby granted, free of charge, to any person obtaining a copy
