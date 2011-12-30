@@ -607,7 +607,7 @@ class TFTPServer {
 
       if(count($read) > 0) {
 	$packet = stream_socket_recvfrom($this->_socket,
-					 65536, // max udp packet size
+					 65535, // max udp packet size
 					 0, // no flags
 					 $peer);
 	$this->log_debug($peer, "request: " . strlen($packet). " bytes");

@@ -132,7 +132,7 @@ function test($server_url, $name, $packet_pairs)
     $read = array($s);
     stream_select($read, $write = null, $excpt = null, 0, $timeout);
     if(count($read) > 0)
-      $result = stream_socket_recvfrom($s, 65536);
+      $result = stream_socket_recvfrom($s, 65535);
     else
       $result = null;
 
@@ -150,7 +150,7 @@ function test($server_url, $name, $packet_pairs)
   $read = array($s);
   stream_select($read, $write = null, $excpt = null, 0, $timeout);
   if(count($read) > 0) {
-    $result = stream_socket_recvfrom($s, 65536);
+    $result = stream_socket_recvfrom($s, 65535);
     echo "FAILED\n";
     echo "Got after end: " . TFTPServer::escape_string($result) . "\n";
     return false;
