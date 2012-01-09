@@ -680,6 +680,14 @@ class TFTPServer {
 	}
 
 	$rawexts = array_slice($a, 2, -1);
+
+	# Cisco IP Phone 7941 (and possibly others) return two nulls at the end
+	# Seems to be a breach of RFC rfc2347 ( http://tools.ietf.org/html/rfc2347 ) 
+	# This is a workaround - if there is exactly half an extension (i.e. key,
+	# but no value), and the key is empty, then the half-extension is dropped.
+	if ((count($rawexts)==1) && ($rawexts[0]=="")) {
+		$rawexts=array();
+	}
 	if(count($rawexts) % 2 != 0) {
 	  $this->log_warning($peer, "request: malformed extension " .
 			     "key/value pairs " . TFTPOpcode::name($op));
