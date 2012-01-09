@@ -103,7 +103,7 @@ class FileTFTPServer extends TFTPServer
     
     $contents = @file_get_contents($path);
     if($contents === false) {
-      $this->log_warning($peer, 'function file_get_contents returned false');
+      $this->log_warning($peer, "function file_get_contents($path) returned false");
       return false;
     }
     
