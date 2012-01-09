@@ -3,7 +3,7 @@
 /*
  * Functional test for TFTPServer
  *
- * Copyright (c) 2010 <mattias.wadman@gmail.com>
+ * Copyright (c) 2011 <mattias.wadman@gmail.com>
  *
  * MIT License:
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,10 +31,13 @@ require_once("tftpserver.php");
 class TestTFTPServer extends TFTPServer
 {
   private $_files = array();
+  private $_debug;
 
-  function __construct($server_url)
+  function __construct($server_url, $debug = false)
   {
     parent::__construct($server_url);
+    $this->_debug = $debug;
+    $this->max_put_size = 60000000;
   }
 
   private function log($peer, $level, $message)
@@ -48,7 +51,10 @@ class TestTFTPServer extends TFTPServer
 
   public function log_debug($peer, $message)
   {
-    //$this->log($peer, "D", $message);
+    if(!$this->_debug)
+      return;
+
+    $this->log($peer, "D", $message);
   }
 
   public function log_info($peer, $message)
@@ -126,7 +132,7 @@ function test($server_url, $name, $packet_pairs)
     $read = array($s);
     stream_select($read, $write = null, $excpt = null, 0, $timeout);
     if(count($read) > 0)
-      $result = stream_socket_recvfrom($s, 1500);
+      $result = stream_socket_recvfrom($s, 65535);
     else
       $result = null;
 
@@ -144,7 +150,7 @@ function test($server_url, $name, $packet_pairs)
   $read = array($s);
   stream_select($read, $write = null, $excpt = null, 0, $timeout);
   if(count($read) > 0) {
-    $result = stream_socket_recvfrom($s, 1500);
+    $result = stream_socket_recvfrom($s, 65535);
     echo "FAILED\n";
     echo "Got after end: " . TFTPServer::escape_string($result) . "\n";
     return false;
@@ -159,13 +165,21 @@ $host = "127.0.0.1";
 $port = 1234;
 $url = "udp://$host:$port";
 
-$pid = pcntl_fork();
-
-if($pid == 0) {
-  $server = new TestTFTPServer($url);
+if(count($_SERVER["argv"]) > 1) {
+  $server = new TestTFTPServer($url, true);
   if(!$server->loop(&$error))
     die("$error\n");
 } else {
+
+  $pid = pcntl_fork();
+
+  if($pid == 0) {
+    $server = new TestTFTPServer($url);
+    if(!$server->loop(&$error))
+      die("$error\n");
+    exit(0);
+  }
+
   usleep(100000);
 
   $s500 = str_pad("", 500, "a");
@@ -284,7 +298,7 @@ if($pid == 0) {
     array(
 	  array(pack("n", TFTPOpcode::WRQ) . "test\0octet\0tsize\00099999999\0",
 		pack("nn", TFTPOpcode::ERROR,
-		     TFTPError::DISK_FULL) . "File too big, 99999999(tsize) > 10485760\0")
+		     TFTPError::DISK_FULL) . "File too big, 99999999(tsize) > 60000000\0")
 	  ),
     "Read non-existing file",
     array(
@@ -357,7 +371,7 @@ if($pid == 0) {
   echo (count($tests) / 2) . " total, $failed failed\n";
 
   echo "Testing some standard clients\n";
-  system("sh test_clients.sh localhost 1234");
+  system("sh test_clients.sh $host $port");
 
   // kill server
   posix_kill($pid, SIGINT);

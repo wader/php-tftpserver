@@ -3,7 +3,7 @@
 /*
  * PHP TFTP Server
  *
- * Copyright (c) 2010 <mattias.wadman@gmail.com>
+ * Copyright (c) 2011 <mattias.wadman@gmail.com>
  *
  * MIT License:
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -480,11 +480,10 @@ class TFTPWriteTransfer extends TFTPTransfer {
 
 class TFTPServer {
   public $block_size = 512;
-  public $max_block_size = 1432;
+  public $max_block_size = 65464; // max block size from rfc2348
   public $timeout = 10;
   public $retransmit_timeout = 1;
   public $max_put_size = 10485760; // 10 Mibi
-  public $mtu = 1500;
   private $_socket_url;
   private $_socket;
   private $_transfers = array();
@@ -608,7 +607,16 @@ class TFTPServer {
 
       if(count($read) > 0) {
 	$packet = stream_socket_recvfrom($this->_socket,
-					 $this->mtu, 0, $peer);
+					 65535, // max udp packet size
+					 0, // no flags
+					 $peer);
+	// ipv6 hack, convert to [host]:port format
+	if(strpos($peer, ".") === false) {
+	  $portpos = strrpos($peer, ":");
+	  $host = substr($peer, 0, $portpos);
+	  $port = substr($peer, $portpos + 1);
+	  $peer = "[$host]:$port";
+	}
 	$this->log_debug($peer, "request: " . strlen($packet). " bytes");
 	$this->log_debug($peer, "request: " . 
 			 TFTPServer::escape_string($packet));
