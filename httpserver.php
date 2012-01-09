@@ -101,8 +101,8 @@ class FileTFTPServer extends TFTPServer
     if($path === false)
       return false;
     
-    $content = @file_get_contents($path);
-    if($content === false) {
+    $contents = @file_get_contents($path);
+    if($contents === false) {
       $this->log_warning($peer, 'function file_get_contents returned false');
       return false;
     }
@@ -111,7 +111,7 @@ class FileTFTPServer extends TFTPServer
     if($http_response_header[0] != 'HTTP/1.1 200 OK')
         return false;    
     
-    $this->content = $content;
+    $this->contents = $contents;
         return true;
   }
 
@@ -122,7 +122,7 @@ class FileTFTPServer extends TFTPServer
 
   public function get($peer, $filename, $mode)
   {
-    return $this->content;
+    return $this->contents;
   }
 
   public function writable($peer, $filename)
