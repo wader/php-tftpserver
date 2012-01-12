@@ -38,46 +38,15 @@ class FileTFTPServer extends TFTPServer
   private $_root;
   private $_debug;
   private $contents;
+  private $logger;
 
   function __construct($server_url,
-		       $root = null, $rw = false, $debug = false)
+		       $root = null, $rw = false, $debug = false, $logger=NULL)
   {
-    parent::__construct($server_url);
+    parent::__construct($server_url,$logger);
     $this->_root = $root;
     $this->_rw = $rw;
     $this->_debug = $debug;
-  }
-
-  private function log($peer, $level, $message)
-  {
-    echo
-      date("H:i:s") . " " .
-      $level . " " .
-      $peer . " " .
-      $message . "\n";
-  }
-
-  public function log_debug($peer, $message)
-  {
-    if(!$this->_debug)
-      return;
-
-    $this->log($peer, "D", $message);
-  }
-
-  public function log_info($peer, $message)
-  {
-    $this->log($peer, "I", $message);
-  }
-
-  public function log_warning($peer, $message)
-  {
-    $this->log($peer, "W", $message);
-  }
-
-  public function log_error($peer, $message)
-  {
-    $this->log($peer, "E", $message);
   }
 
   private function resolv_path($path)
@@ -137,23 +106,31 @@ class FileTFTPServer extends TFTPServer
 }
 
 if(count($_SERVER["argv"]) < 3)
-  die("Usage: {$_SERVER["argv"][0]} bind_ip web_url(http://<serverip>/bluebox/index.php/endpointmanager/config) [user] [rw] [debug]\n");
+  die("Usage: {$_SERVER["argv"][0]} bind_ip web_url(http://<serverip>/bluebox/index.php/endpointmanager/config) [user] [rw] [debug] [foreground]\n");
 
   
 $debug = false;
 if(isset($_SERVER["argv"][5]))
   $debug = (bool)$_SERVER["argv"][5];
-  
-if((!$debug) AND (function_exists('posix_setsid'))) {
-  $pid = daemonize("tftpserver.pid", "/");
-if($pid === false)
-  die("Failed to daemonize\n");
-if($pid != 0)
-  exit(0);
-} elseif(!function_exists('posix_setsid')) {
-    print "POSIX Functions don't exist. So we can't run this in the background.\n".
-        "You Might want to think about running 'yum install php-process' or something equivalent\n".
-        "For now we will just run in the foreground\n";
+
+if(isset($_SERVER["argv"][6])) {
+  $foreground = (bool)$_SERVER["argv"][5];
+} else {
+  $foreground = $debug;
+}
+
+if (!$foreground) {
+	if (function_exists('posix_setsid') AND function_exists('pcntl_fork')) {
+		$pid = daemonize("tftpserver.pid", "/");
+		if($pid === false)
+			die("Failed to daemonize\n");
+		if($pid != 0)
+			exit(0);
+	} else {
+		print "POSIX Functions don't exist. So we can't run this in the background.\n".
+			"You Might want to think about running 'yum install php-process' or something equivalent\n".
+			"For now we will just run in the foreground\n";
+	}
 }
 
 $user = null;
@@ -163,9 +140,14 @@ $rw = false;
 if(isset($_SERVER["argv"][4]))
   $rw = (bool)$_SERVER["argv"][4];
 
+if ($debug) {
+	$logger=new Logger_Syslog(LOG_NOTICE);
+} else {
+	$logger=new Logger_Stdout(LOG_DEBUG);
+}
 
 $server = new FileTFTPServer('udp://'.$_SERVER["argv"][1].':69',
 			     $_SERVER["argv"][2],
-			     $rw, $debug);
+			     $rw, $debug,$logger);
 if(!$server->loop(&$error, $user))
   die("$error\n");
