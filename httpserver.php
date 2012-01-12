@@ -35,41 +35,56 @@ require_once("daemon.php");
 
 class FileTFTPServer extends TFTPServer
 {
-  private $_root;
+  private $_uri;
   private $_debug;
   private $contents;
   private $logger;
 
+  /* Note: uri may contain: $f for filename $i for peer ip,  $p for peer port.
+     all fields will be url_encoded.
+     if no $f is found, $f will be appended. There is no way to say you 
+     don't want the filename included
+     There is no way to send a literal $f, $i or $p - if you want to implement 
+     that, feel free to submit a patch back.
+
+     note that dollar signs are meaningfull to shells, so escape them \$ or
+     quote them 'http://blah/?file=$f'.
+  */
+
   function __construct($server_url,
-		       $root = null, $rw = false, $debug = false, $logger=NULL)
+		       $uri, $rw = false, $debug = false, $logger=NULL)
   {
     parent::__construct($server_url,$logger);
-    $this->_root = $root;
+    if (strpos($uri,'$f')===FALSE) {
+      $uri.='$f';
+    }
+    $this->_uri= $uri;
     $this->_rw = $rw;
     $this->_debug = $debug;
   }
 
-  private function resolv_path($path)
+  private function resolv_path($path,$peer_ip,$peer_port)
   {
-    if(strstr($path, "../") != false ||
-       strstr($path, "/..") != false)
-      return false;
-
-    $abs = "{$this->_root}/$path";
-    if(substr($abs, 0, strlen($this->_root)) != $this->_root)
-      return false;
-
-    return $abs;
+    $replacements=array(
+	'$f'=>urlencode($path),
+	'$i'=>urlencode($peer_ip),
+ 	'$p'=>urlencode($peer_port),
+    );
+    return str_replace(array_keys($replacements),array_values($replacements),$this->_uri);
   }
 
   public function exists($peer, $filename)
   {
     $this->log_warning($peer, 'Checking if file exists');
+
+    $p=explode(":",$peer);
       
-    $path = $this->resolv_path($filename);
+    $path = $this->resolv_path($filename,$p[0],$p[1]);
     if($path === false)
       return false;
-    
+
+    $this->log_debug($peer,"Fetching url $path");
+ 
     $contents = @file_get_contents($path);
     if($contents === false) {
       $this->log_warning($peer, "function file_get_contents($path) returned false");
