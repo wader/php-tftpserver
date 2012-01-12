@@ -114,7 +114,7 @@ if(isset($_SERVER["argv"][5]))
   $debug = (bool)$_SERVER["argv"][5];
 
 if(isset($_SERVER["argv"][6])) {
-  $foreground = (bool)$_SERVER["argv"][5];
+  $foreground = (bool)$_SERVER["argv"][6];
 } else {
   $foreground = $debug;
 }
