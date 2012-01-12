@@ -104,7 +104,7 @@ class Logger_Syslog extends Logger
 
 class Logger_Filehandle extends Logger
 {
-	$priority_map=array(
+	private $priority_map=array(
 		LOG_DEBUG=>"D",
 		LOG_INFO=>"I",
 		LOG_NOTICE=>"N",
