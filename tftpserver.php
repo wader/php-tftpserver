@@ -80,7 +80,7 @@ Abstract class Logger
 		// Note: this looks reversed, but is correct
 		// the priority must be AT LEAST the minimum,
 		// because higher priorities represent lower numbers.
-		return $priority>=$this->minimum;
+		return $priority<=$this->minimum;
 	}
 
 	abstract function log($priority,$message);
