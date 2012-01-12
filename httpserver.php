@@ -141,9 +141,9 @@ if(isset($_SERVER["argv"][4]))
   $rw = (bool)$_SERVER["argv"][4];
 
 if ($debug) {
-	$logger=new Logger_Syslog(LOG_NOTICE);
+	$logger=new Logger_Stdout(LOG_NOTICE);
 } else {
-	$logger=new Logger_Stdout(LOG_DEBUG);
+	$logger=new Logger_Syslog(LOG_DEBUG);
 }
 
 $server = new FileTFTPServer('udp://'.$_SERVER["argv"][1].':69',

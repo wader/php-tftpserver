@@ -118,7 +118,7 @@ class Logger_Filehandle extends Logger
 	{
 		$this->filehandle=$filehandle;
 		$this->dateformat=$dateformat;
-		return __construct($minimum);
+		return parent::__construct($minimum);
 	}
 
 	function log($priority,$message) 
