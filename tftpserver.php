@@ -124,7 +124,7 @@ class Logger_Filehandle extends Logger
 	function log($priority,$message) 
 	{
 		if ($this->shouldlog($priority))
-			fwrite($this->filehandle,date($this->dateformat).": ".$this->priority_map[$priority]." ".$message);
+			fwrite($this->filehandle,date($this->dateformat).": ".$this->priority_map[$priority]." ".$message."\n");
 	}
 }
 
