@@ -254,6 +254,13 @@ if(count($_SERVER["argv"]) > 1) {
 	  array(pack("nn", TFTPOpcode::ACK, 1),
 		null)
 	  ),
+    "Read file with malformed extensions (trailing zero cisco workaround)",
+    array(
+	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0\0",
+		pack("nn", TFTPOpcode::DATA, 1) . $s511),
+	  array(pack("nn", TFTPOpcode::ACK, 1),
+		null)
+	  ),
     "Read file with extensions, 500 byte block, 5 sec timeout",
     array(
 	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0timeout\0005\0blksize\000500\0",
