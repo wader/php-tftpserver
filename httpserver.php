@@ -46,42 +46,44 @@ class FileTFTPServer extends TFTPServer
 
      note that dollar signs are meaningfull to shells, so escape them \$ or
      quote them 'http://blah/?file=$f'.
-  */
+   */
 
-  function __construct($server_url,
-		       $uri, $rw = false, $debug = false, $logger=NULL)
+  function __construct($server_url, $uri, $rw = false, $debug = false, $logger = NULL)
   {
-    parent::__construct($server_url,$logger);
-    if (strpos($uri,'$f')===FALSE) {
-      $uri.='$f';
+    parent::__construct($server_url, $logger);
+    if (strpos($uri,'$f') === FALSE) {
+      $uri .= '$f';
     }
-    $this->_uri= $uri;
+    $this->_uri = $uri;
     $this->_rw = $rw;
     $this->_debug = $debug;
   }
 
-  private function resolv_path($path,$peer_ip,$peer_port)
+  private function resolv_path($path, $peer_ip, $peer_port)
   {
-    $replacements=array(
-	'$f'=>urlencode($path),
-	'$i'=>urlencode($peer_ip),
- 	'$p'=>urlencode($peer_port),
+    $replacements = array(
+      '$f' => urlencode($path),
+      '$i' => urlencode($peer_ip),
+      '$p' => urlencode($peer_port),
     );
-    return str_replace(array_keys($replacements),array_values($replacements),$this->_uri);
+    return str_replace(
+      array_keys($replacements),
+      array_values($replacements),
+      $this->_uri);
   }
 
   public function exists($peer, $filename)
   {
-    $this->log_warning($peer, 'Checking if file exists');
+    $this->log_warning($peer, "Checking if file exists");
 
-    $p=explode(":",$peer);
-      
-    $path = $this->resolv_path($filename,$p[0],$p[1]);
+    $p = explode(":", $peer);
+
+    $path = $this->resolv_path($filename, $p[0], $p[1]);
     if($path === false)
       return false;
 
-    $this->log_debug($peer,"Fetching url $path");
- 
+    $this->log_debug($peer, "Fetching url $path");
+
     $contents = @file_get_contents($path);
     if($contents === false) {
       $this->log_warning($peer, "function file_get_contents($path) returned false");
@@ -93,7 +95,7 @@ class FileTFTPServer extends TFTPServer
         return false;    
     
     $this->contents = $contents;
-        return true;
+    return true;
   }
 
   public function readable($peer, $filename)
@@ -120,7 +122,6 @@ class FileTFTPServer extends TFTPServer
 if(count($_SERVER["argv"]) < 3)
   die("Usage: {$_SERVER["argv"][0]} bind_ip web_url(http://<serverip>/bluebox/index.php/endpointmanager/config) [user] [rw] [debug] [foreground]\n");
 
-  
 $debug = false;
 if(isset($_SERVER["argv"][5]))
   $debug = (bool)$_SERVER["argv"][5];
@@ -132,34 +133,33 @@ if(isset($_SERVER["argv"][6])) {
 }
 
 if (!$foreground) {
-	if (function_exists('posix_setsid') AND function_exists('pcntl_fork')) {
-		$pid = daemonize("tftpserver.pid", "/");
-		if($pid === false)
-			die("Failed to daemonize\n");
-		if($pid != 0)
-			exit(0);
-	} else {
-		print "POSIX Functions don't exist. So we can't run this in the background.\n".
-			"You Might want to think about running 'yum install php-process' or something equivalent\n".
-			"For now we will just run in the foreground\n";
-	}
+  if (function_exists('posix_setsid') && function_exists('pcntl_fork')) {
+    $pid = daemonize("tftpserver.pid", "/");
+    if($pid === false)
+      die("Failed to daemonize\n");
+    if($pid != 0)
+      exit(0);
+  } else {
+    echo "POSIX Functions don't exist. So we can't run this in the background.\n" .
+      "You Might want to think about running 'yum install php-process' or something equivalent\n" .
+      "For now we will just run in the foreground\n";
+  }
 }
 
 $user = null;
-if(isset($_SERVER["argv"][3]) AND function_exists('posix_setsid'))
+if(isset($_SERVER["argv"][3]) && function_exists('posix_setsid'))
   $user = posix_getpwnam($_SERVER["argv"][3]);
 $rw = false;
 if(isset($_SERVER["argv"][4]))
   $rw = (bool)$_SERVER["argv"][4];
 
 if ($debug) {
-	$logger=new Logger_Stdout(LOG_DEBUG);
+  $logger = new Logger_Stdout(LOG_DEBUG);
 } else {
-	$logger=new Logger_Syslog(LOG_NOTICE);
+  $logger = new Logger_Syslog(LOG_NOTICE);
 }
 
-$server = new FileTFTPServer('udp://'.$_SERVER["argv"][1].':69',
-			     $_SERVER["argv"][2],
-			     $rw, $debug,$logger);
+$server = new FileTFTPServer('udp://'.$_SERVER["argv"][1].':69', $_SERVER["argv"][2],
+$rw, $debug,$logger);
 if(!$server->loop(&$error, $user))
   die("$error\n");

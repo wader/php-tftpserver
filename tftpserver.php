@@ -66,89 +66,89 @@ represent instability in the entire operating system.
 Note that the number they are represented by are in reverse order - LOG_EMERG is the lowest,
 LOG_DEBUG the highest.
 
-*/
+ */
 
-Abstract class Logger
+abstract class Logger
 {
-	function __construct($minimum) 
-	{
-		$this->minimum=$minimum;
-	}
+  function __construct($minimum)
+  {
+    $this->minimum = $minimum;
+  }
 
-	function shouldlog($priority)
-	{
-		// Note: this looks reversed, but is correct
-		// the priority must be AT LEAST the minimum,
-		// because higher priorities represent lower numbers.
-		return $priority<=$this->minimum;
-	}
+  function shouldlog($priority)
+  {
+    // Note: this looks reversed, but is correct
+    // the priority must be AT LEAST the minimum,
+    // because higher priorities represent lower numbers.
+    return $priority <= $this->minimum;
+  }
 
-	abstract function log($priority,$message);
+  abstract function log($priority, $message);
 }
 
 class Logger_Null extends Logger
 {
-	function log($priority,$message)
-	{
-	}
+  function log($priority, $message)
+  {
+  }
 }
 
 class Logger_Syslog extends Logger
 {
-	function log($priority,$message)
-	{
-		if ($this->shouldlog($priority))
-			syslog($priority,$message);
-	}
+  function log($priority, $message)
+  {
+    if($this->shouldlog($priority))
+      syslog($priority,$message);
+  }
 }
 
 class Logger_Filehandle extends Logger
 {
-	private $priority_map=array(
-		LOG_DEBUG=>"D",
-		LOG_INFO=>"I",
-		LOG_NOTICE=>"N",
-		LOG_WARNING=>"W",
-		LOG_ERR=>"E",
-		LOG_CRIT=>"C",
-		LOG_ALERT=>"A",
-		LOG_EMERG=>"!"
-	);
-	function __construct($minimum,$filehandle,$dateformat="r")
-	{
-		$this->filehandle=$filehandle;
-		$this->dateformat=$dateformat;
-		return parent::__construct($minimum);
-	}
+  private $priority_map = array(
+    LOG_DEBUG => "D",
+    LOG_INFO => "I",
+    LOG_NOTICE => "N",
+    LOG_WARNING => "W",
+    LOG_ERR => "E",
+    LOG_CRIT => "C",
+    LOG_ALERT => "A",
+    LOG_EMERG => "!"
+  );
+  function __construct($minimum, $filehandle, $dateformat = "r")
+  {
+    $this->filehandle = $filehandle;
+    $this->dateformat = $dateformat;
+    return parent::__construct($minimum);
+  }
 
-	function log($priority,$message) 
-	{
-		if ($this->shouldlog($priority))
-			fwrite($this->filehandle,date($this->dateformat).": ".$this->priority_map[$priority]." ".$message."\n");
-	}
+  function log($priority,$message) 
+  {
+    if($this->shouldlog($priority))
+      fwrite($this->filehandle, date($this->dateformat) . ": " . $this->priority_map[$priority] . " $message\n");
+  }
 }
 
 class Logger_Filename extends Logger_Filehandle
 {
-	function __construct($minimum,$filename,$dateformat="r")
-	{
-		return parent::__construct($minimum,fopen($filename,"a"),$dateformat);
-	}
+  function __construct($minimum, $filename, $dateformat = "r")
+  {
+    return parent::__construct($minimum, fopen($filename, "a"), $dateformat);
+  }
 }
 
 class Logger_Stderr extends Logger_Filehandle
 {
-	function __construct($minimum,$dateformat="r")
-	{
-		return parent::__construct($minimum,STDERR,$dateformat);
-	}
+  function __construct($minimum, $dateformat = "r")
+  {
+    return parent::__construct($minimum, STDERR, $dateformat);
+  }
 }
 class Logger_Stdout extends Logger_Filehandle
 {
-	function __construct($minimum,$dateformat="r")
-	{
-		return parent::__construct($minimum,STDOUT,$dateformat);
-	}
+  function __construct($minimum, $dateformat = "r")
+  {
+    return parent::__construct($minimum, STDOUT, $dateformat);
+  }
 }
 
 class TFTPOpcode
@@ -583,9 +583,9 @@ class TFTPServer {
   private $_socket_url;
   private $_socket;
   private $_transfers = array();
-  private $logger=NULL;
+  private $logger = NULL;
 
-  function __construct($socket_url,$logger=NULL)
+  function __construct($socket_url,$logger = NULL)
   {
     $this->_socket_url = $socket_url;
     $this->logger = $logger;
@@ -617,30 +617,30 @@ class TFTPServer {
 
   public function log_debug($peer, $message)
   {
-	if ($this->logger!==NULL) {
-		$this->logger->log(LOG_DEBUG,"$peer $message");
-	}
+    if($this->logger !== NULL) {
+      $this->logger->log(LOG_DEBUG,"$peer $message");
+    }
   }
 
   public function log_info($peer, $message)
   {
-	if ($this->logger!==NULL) {
-		$this->logger->log(LOG_INFO,"$peer $message");
-	}
+    if($this->logger !== NULL) {
+      $this->logger->log(LOG_INFO,"$peer $message");
+    }
   }
 
   public function log_warning($peer, $message)
   {
-	if ($this->logger!==NULL) {
-		$this->logger->log(LOG_WARNING,"$peer $message");
-	}
+    if($this->logger !== NULL) {
+      $this->logger->log(LOG_WARNING,"$peer $message");
+    }
   }
 
   public function log_error($peer, $message)
   {
-	if ($this->logger!==NULL) {
-		$this->logger->log(LOG_ERROR,"$peer $message");
-	}
+    if($this->logger !== NULL) {
+      $this->logger->log(LOG_ERROR,"$peer $message");
+    }
   }
 
   public static function packet_ack($block)
@@ -791,10 +791,11 @@ class TFTPServer {
 
 	$rawexts = array_slice($a, 2, -1);
 
-	# Cisco IP Phone 7941 (and possibly others) return an extra null
-	# at the end; a breach of RFC rfc2347. This is a workaround
+	// Cisco IP Phone 7941 (and possibly others) return an extra null
+	// at the end; a breach of RFC rfc2347. This is a workaround.
+	// If odd count strip last and continue if empty, else warn and ignore
 	if(count($rawexts) % 2 != 0) {
-	  if (array_pop($rawexts)!="") {
+	  if(array_pop($rawexts)!="") {
 	    $this->log_warning($peer, "request: malformed extension " .
 			       "key/value pairs " . TFTPOpcode::name($op));
 	    return false;
