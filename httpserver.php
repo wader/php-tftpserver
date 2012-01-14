@@ -120,14 +120,14 @@ class FileTFTPServer extends TFTPServer
 }
 
 if(count($_SERVER["argv"]) < 3)
-  die("Usage: {$_SERVER["argv"][0]} bind_ip web_url(http://<serverip>/bluebox/index.php/endpointmanager/config) [user] [rw] [debug] [foreground]\n");
+  die("Usage: {$_SERVER["argv"][0]} bind_ip web_url(http://<serverip>/bluebox/index.php/endpointmanager/config) [user] [debug] [foreground]\n");
 
 $debug = false;
-if(isset($_SERVER["argv"][5]))
-  $debug = (bool)$_SERVER["argv"][5];
+if(isset($_SERVER["argv"][4]))
+  $debug = (bool)$_SERVER["argv"][4];
 
-if(isset($_SERVER["argv"][6])) {
-  $foreground = (bool)$_SERVER["argv"][6];
+if(isset($_SERVER["argv"][5])) {
+  $foreground = (bool)$_SERVER["argv"][5];
 } else {
   $foreground = $debug;
 }
