@@ -74,7 +74,7 @@ class FileTFTPServer extends TFTPServer
 
   public function exists($peer, $filename)
   {
-    $this->log_warning($peer, "Checking if file exists");
+    $this->log_debug($peer, "Checking if file exists");
 
     $p = explode(":", $peer);
 
@@ -90,7 +90,7 @@ class FileTFTPServer extends TFTPServer
       return false;
     }
 
-    $this->log_warning($peer, "HTTP Server Replied With: {$http_response_header[0]}");
+    $this->log_debug($peer, "HTTP Server Replied With: {$http_response_header[0]}");
     if(!preg_match('/^HTTP\/1\.\d 200 .*$/', $http_response_header[0]))
       return false;
 
