@@ -78,15 +78,11 @@ class FileTFTPServer extends TFTPServer
 
     $p = explode(":", $peer);
 
-    $path = $this->resolv_path($filename, $p[0], $p[1]);
-    if($path === false)
-      return false;
-
-    $this->log_debug($peer, "Fetching url $path");
-
-    $contents = @file_get_contents($path);
+    $url = $this->resolv_path($filename, $p[0], $p[1]);
+    $this->log_debug($peer, "Fetching url $url");
+    $contents = @file_get_contents($url);
     if($contents === false) {
-      $this->log_warning($peer, "function file_get_contents($path) returned false");
+      $this->log_warning($peer, "function file_get_contents($url) returned false");
       return false;
     }
 
