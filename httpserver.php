@@ -89,11 +89,11 @@ class FileTFTPServer extends TFTPServer
       $this->log_warning($peer, "function file_get_contents($path) returned false");
       return false;
     }
-    
-    $this->log_warning($peer, 'HTTP Server Replied With: '.$http_response_header[0]);
-    if($http_response_header[0] != 'HTTP/1.1 200 OK')
-        return false;    
-    
+
+    $this->log_warning($peer, "HTTP Server Replied With: {$http_response_header[0]}");
+    if(!preg_match('/^HTTP\/1\.\d 200 .*$/', $http_response_header[0]))
+      return false;
+
     $this->contents = $contents;
     return true;
   }
