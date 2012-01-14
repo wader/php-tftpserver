@@ -1,8 +1,5 @@
 #!/usr/bin/php
 <?php
-//this doesnt matter
-date_default_timezone_set('America/Los_Angeles');
-
 /*
  * HTTPproxy TFTPServer example
  *
