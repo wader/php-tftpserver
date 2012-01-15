@@ -118,7 +118,7 @@ class Logger_Filehandle extends Logger
     return parent::__construct($minimum);
   }
 
-  function log($priority,$message) 
+  function log($priority, $message)
   {
     if($this->shouldlog($priority))
       fwrite($this->filehandle, date($this->dateformat) . ": " . $this->priority_map[$priority] . " $message\n");
@@ -580,12 +580,12 @@ class TFTPServer {
   private $_socket_url;
   private $_socket;
   private $_transfers = array();
-  private $logger = NULL;
+  private $_logger = NULL;
 
-  function __construct($socket_url,$logger = NULL)
+  function __construct($socket_url, $logger = NULL)
   {
     $this->_socket_url = $socket_url;
-    $this->logger = $logger;
+    $this->_logger = $logger;
   }
 
   public function exists($peer, $filename)
@@ -612,32 +612,31 @@ class TFTPServer {
   {
   }
 
+  public function logger_log($priority, $message) {
+    if($this->_logger === NULL)
+      return;
+
+    $this->_logger->log($priority, $message);
+  }
+
   public function log_debug($peer, $message)
   {
-    if($this->logger !== NULL) {
-      $this->logger->log(LOG_DEBUG,"$peer $message");
-    }
+    $this->logger_log(LOG_DEBUG, "$peer $message");
   }
 
   public function log_info($peer, $message)
   {
-    if($this->logger !== NULL) {
-      $this->logger->log(LOG_INFO,"$peer $message");
-    }
+    $this->logger_log(LOG_INFO, "$peer $message");
   }
 
   public function log_warning($peer, $message)
   {
-    if($this->logger !== NULL) {
-      $this->logger->log(LOG_WARNING,"$peer $message");
-    }
+    $this->logger_log(LOG_WARNING, "$peer $message");
   }
 
   public function log_error($peer, $message)
   {
-    if($this->logger !== NULL) {
-      $this->logger->log(LOG_ERROR,"$peer $message");
-    }
+    $this->logger_log(LOG_ERR, "$peer $message");
   }
 
   public static function packet_ack($block)
@@ -685,7 +684,7 @@ class TFTPServer {
 			   STREAM_SERVER_BIND);
     if(!$this->_socket) {
       if($error !== false)
-	$error = "$errno: $errstr";	
+	$error = "$errno: $errstr";
       return false;
     }
 
