@@ -1,3 +1,4 @@
+#!/usr/bin/env php
 <?php
 
 /*
@@ -249,6 +250,13 @@ if(count($_SERVER["argv"]) > 1) {
     "Read file with unknown extensions",
     array(
 	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0bla\0bla\0",
+		pack("nn", TFTPOpcode::DATA, 1) . $s511),
+	  array(pack("nn", TFTPOpcode::ACK, 1),
+		null)
+	  ),
+    "Read file with malformed extensions (trailing zero cisco workaround)",
+    array(
+	  array(pack("n", TFTPOpcode::RRQ) . "test\0octet\0\0",
 		pack("nn", TFTPOpcode::DATA, 1) . $s511),
 	  array(pack("nn", TFTPOpcode::ACK, 1),
 		null)
