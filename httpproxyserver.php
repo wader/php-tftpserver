@@ -130,7 +130,7 @@ if(isset($_SERVER["argv"][5])) {
 
 if (!$foreground) {
   if (function_exists('posix_setsid') && function_exists('pcntl_fork')) {
-    $pid = daemonize("tftpserver.pid", "/");
+    $pid = daemonize("/tmp/httptftpserver.pid", "/");
     if($pid === false)
       die("Failed to daemonize\n");
     if($pid != 0)
