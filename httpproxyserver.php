@@ -3,7 +3,7 @@
 /*
  * HTTP proxy TFTPServer example
  *
- * Copyright (c) 2010 <mattias.wadman@gmail.com>
+ * Copyright (c) 2011 <mattias.wadman@gmail.com>
  *
  * MIT License:
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -77,7 +77,6 @@ class HTTPProxyTFTPServer extends TFTPServer
     $this->log_debug($peer, "Checking if file exists");
 
     $p = explode(":", $peer);
-
     $url = $this->resolv_path($filename, $p[0], $p[1]);
     $this->log_debug($peer, "Fetching url $url");
     $contents = @file_get_contents($url);
@@ -86,7 +85,7 @@ class HTTPProxyTFTPServer extends TFTPServer
       return false;
     }
 
-    $this->log_debug($peer, "HTTP Server Replied With: {$http_response_header[0]}");
+    $this->log_debug($peer, "HTTP response line: {$http_response_header[0]}");
     if(!preg_match('/^HTTP\/1\.\d 200 .*$/', $http_response_header[0]))
       return false;
 
