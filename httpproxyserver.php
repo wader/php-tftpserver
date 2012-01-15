@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 /*
- * HTTPproxy TFTPServer example
+ * HTTP proxy TFTPServer example
  *
  * Copyright (c) 2010 <mattias.wadman@gmail.com>
  *
@@ -30,7 +30,7 @@
 require_once("tftpserver.php");
 require_once("daemon.php");
 
-class FileTFTPServer extends TFTPServer
+class HTTPProxyTFTPServer extends TFTPServer
 {
   private $_uri;
   private $_debug;
@@ -155,7 +155,7 @@ if ($debug) {
   $logger = new Logger_Syslog(LOG_NOTICE);
 }
 
-$server = new FileTFTPServer('udp://'.$_SERVER["argv"][1].':69', $_SERVER["argv"][2],
+$server = new HTTPProxyTFTPServer('udp://'.$_SERVER["argv"][1].':69', $_SERVER["argv"][2],
 $rw, $debug,$logger);
 if(!$server->loop(&$error, $user))
   die("$error\n");
