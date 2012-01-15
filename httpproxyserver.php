@@ -32,56 +32,39 @@ require_once("daemon.php");
 
 class HTTPProxyTFTPServer extends TFTPServer
 {
-  private $_uri;
-  private $_debug;
-  private $contents;
-  private $logger;
+  private $_url_template;
 
-  /* Note: uri may contain: $f for filename $i for peer ip,  $p for peer port.
-     all fields will be url_encoded.
-     if no $f is found, $f will be appended. There is no way to say you 
-     don't want the filename included
-     There is no way to send a literal $f, $i or $p - if you want to implement 
-     that, feel free to submit a patch back.
-
-     note that dollar signs are meaningfull to shells, so escape them \$ or
-     quote them 'http://blah/?file=$f'.
+  /*
+   * Note: URI may contain: %filename, %ip, %port and %mode
+   * All fields will be URL encoded.
+   * Currently no support for escaping a %.
    */
 
-  function __construct($server_url, $uri, $rw = false, $debug = false, $logger = NULL)
+  function __construct($server_url, $url_template, $logger = NULL)
   {
     parent::__construct($server_url, $logger);
-    if (strpos($uri,'$f') === FALSE) {
-      $uri .= '$f';
-    }
-    $this->_uri = $uri;
-    $this->_rw = $rw;
-    $this->_debug = $debug;
+    $this->_url_template = $url_template;
   }
 
-  private function resolv_path($path, $peer_ip, $peer_port)
+  public function get($peer, $filename, $mode)
   {
+    $p = explode(":", $peer);
     $replacements = array(
-      '$f' => urlencode($path),
-      '$i' => urlencode($peer_ip),
-      '$p' => urlencode($peer_port),
+      "%filename" => urlencode($filename),
+      "%ip" => urlencode($p[0]),
+      "%port" => urlencode($p[1]),
+      "%mode" => urlencode($mode)
     );
-    return str_replace(
+
+    $url = str_replace(
       array_keys($replacements),
       array_values($replacements),
-      $this->_uri);
-  }
+      $this->_url_template);
 
-  public function exists($peer, $filename)
-  {
-    $this->log_debug($peer, "Checking if file exists");
-
-    $p = explode(":", $peer);
-    $url = $this->resolv_path($filename, $p[0], $p[1]);
-    $this->log_debug($peer, "Fetching url $url");
+    $this->log_debug($peer, "Fetching URL $url");
     $contents = @file_get_contents($url);
     if($contents === false) {
-      $this->log_warning($peer, "function file_get_contents($url) returned false");
+      $this->log_warning($peer, "Failed to fetch $url");
       return false;
     }
 
@@ -89,33 +72,12 @@ class HTTPProxyTFTPServer extends TFTPServer
     if(!preg_match('/^HTTP\/1\.\d 200 .*$/', $http_response_header[0]))
       return false;
 
-    $this->contents = $contents;
-    return true;
-  }
-
-  public function readable($peer, $filename)
-  {
-    return true;
-  }
-
-  public function get($peer, $filename, $mode)
-  {
-    return $this->contents;
-  }
-
-  public function writable($peer, $filename)
-  {
-    return false;
-  }
-
-  public function put($peer, $filename, $mode, $content)
-  {
-    return;
+    return $contents;
   }
 }
 
 if(count($_SERVER["argv"]) < 3)
-  die("Usage: {$_SERVER["argv"][0]} bind_ip web_url(http://<serverip>/bluebox/index.php/endpointmanager/config) [user] [debug] [foreground]\n");
+  die("Usage: {$_SERVER["argv"][0]} bind_ip http://webhost/bluebox/index.php/endpointmanager/config) [user] [debug] [foreground]\n");
 
 $debug = false;
 if(isset($_SERVER["argv"][4]))
@@ -144,9 +106,6 @@ if (!$foreground) {
 $user = null;
 if(isset($_SERVER["argv"][3]) && function_exists('posix_setsid'))
   $user = posix_getpwnam($_SERVER["argv"][3]);
-$rw = false;
-if(isset($_SERVER["argv"][4]))
-  $rw = (bool)$_SERVER["argv"][4];
 
 if ($debug) {
   $logger = new Logger_Stdout(LOG_DEBUG);
@@ -154,7 +113,6 @@ if ($debug) {
   $logger = new Logger_Syslog(LOG_NOTICE);
 }
 
-$server = new HTTPProxyTFTPServer('udp://'.$_SERVER["argv"][1].':69', $_SERVER["argv"][2],
-$rw, $debug,$logger);
+$server = new HTTPProxyTFTPServer('udp://'.$_SERVER["argv"][1].':69', $_SERVER["argv"][2], $logger);
 if(!$server->loop(&$error, $user))
   die("$error\n");
