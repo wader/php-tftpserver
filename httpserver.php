@@ -92,7 +92,8 @@ class FileTFTPServer extends TFTPServer
     }
     
     $this->log_warning($peer, 'HTTP Server Replied With: '.$http_response_header[0]);
-    if($http_response_header[0] != 'HTTP/1.1 200 OK')
+    $http_result=explode(" ",$http_response_header[0]);
+    if($http_result[1] != '200')
         return false;    
     
     $this->contents = $contents;
