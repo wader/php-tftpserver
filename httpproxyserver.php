@@ -3,6 +3,7 @@
 /*
  * HTTP proxy TFTPServer example
  *
+ * Copyright (c) 2011 Business Technology Group http://www.btg.co.nz/
  * Copyright (c) 2011 <mattias.wadman@gmail.com>
  *
  * MIT License:
@@ -77,7 +78,7 @@ class HTTPProxyTFTPServer extends TFTPServer
 }
 
 if(count($_SERVER["argv"]) < 3)
-  die("Usage: {$_SERVER["argv"][0]} bind_ip http://webhost/bluebox/index.php/endpointmanager/config) [user] [debug] [foreground]\n");
+  die("Usage: {$_SERVER["argv"][0]} bind_ip uri [user] [debug] [foreground]\n");
 
 $debug = false;
 if(isset($_SERVER["argv"][4]))
