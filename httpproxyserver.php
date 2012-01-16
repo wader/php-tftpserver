@@ -64,14 +64,29 @@ class HTTPProxyTFTPServer extends TFTPServer
 
     $this->log_debug($peer, "Fetching URL $url");
     $contents = @file_get_contents($url);
+    // note: $http_response_header is automatically populated.
     if($contents === false) {
       $this->log_warning($peer, "Failed to fetch $url");
       return false;
     }
 
-    $this->log_debug($peer, "HTTP response line: {$http_response_header[0]}");
-    if(!preg_match('/^HTTP\/1\.\d 200 .*$/', $http_response_header[0]))
-      return false;
+    foreach ($http_response_header AS $headerline) {
+        $this->log_debug($peer,"http header: $headerline");
+    }
+
+    // note: there may be more than one http response; e.g. a 302 first, then a 200. Get the last one.
+    $http_result=array_pop(preg_grep('/^HTTP\/\d+\.\d+ \d+ .*/',$http_response_header));
+    if ($http_result===NULL) {
+        $this->log_error($peer,"HTTP did not contain a response: $http_response_header[0]");
+        return false;
+    }
+    preg_match('/^HTTP\/\d+\.\d+ (\d+) .*/',$http_result,$result);
+    if (!in_array($result[1],array("200"))) {
+        $this->log_debug($peer,"HTTP response indicated failure: $result[0]");
+        return false;
+    }
+
+    $this->log_debug($peer, "HTTP response success: $result[0]");
 
     return $contents;
   }
